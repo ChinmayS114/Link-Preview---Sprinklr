@@ -13,4 +13,3 @@
     localhost:8080/api/preview?url= 
 
 Specify the required url after the '=' symbol.
-![image](https://github.com/ChinmayS114/Link-Preview---Sprinklr/assets/97294898/10778504-e24d-4b21-9090-c5a29c31f595)
