@@ -1,4 +1,4 @@
-package demo;
+package com.example.linkpreview.service;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -13,8 +13,8 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 
 public class MetaTagContentGetter {
-    public static String getMetaTagContent(String pageSource, String property) {
-        Document doc = Jsoup.parse(pageSource);
+    public static String getMetaTagContent(Document doc, String property) {
+
         String content = doc.select("meta[property=" + property + "]").attr("content");
         if (content.isEmpty()) {
             content = doc.select("meta[name=" + property + "]").attr("content");
@@ -51,8 +51,8 @@ public class MetaTagContentGetter {
         }
     }
    
-    public static String getMetaTagContent(String pageSource, String attribute, String value) {
-        Document doc = Jsoup.parse(pageSource);
+    public static String getMetaTagContent(Document doc, String attribute, String value) {
+//        Document doc = Jsoup.parse(pageSource);
         String content = doc.select("meta[" + attribute + "=" + value + "]").attr("content");
         return content;
     }
@@ -73,9 +73,9 @@ public class MetaTagContentGetter {
         }
     }
    
-    public static String extractTitleFromHtml(String html) {
+    public static String extractTitleFromHtml(Document doc) {
         try {
-            Document doc = Jsoup.parse(html);
+//            Document doc = Jsoup.parse(html);
             Element titleElement = doc.selectFirst("title");
             if (titleElement != null) {
                 return titleElement.text();
@@ -86,8 +86,8 @@ public class MetaTagContentGetter {
         return null;
     }
    
-    public static String getLastMetaTagContent(String pageSource, String property) {
-        Document doc = Jsoup.parse(pageSource);
+    public static String getLastMetaTagContent(Document doc, String property) {
+//        Document doc = Jsoup.parse(pageSource);
         Elements metaTags = doc.select("meta[property=" + property + "]");
         if (!metaTags.isEmpty()) {
             Element lastMetaTag = metaTags.last();

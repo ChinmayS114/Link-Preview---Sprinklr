@@ -5,73 +5,74 @@ import org.openqa.selenium.WebDriver.Options;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.springframework.stereotype.Service;
-
-//import com.example.linkpreview.model.AggregatedLinkPreviewResponse;
 import com.example.linkpreview.model.LinkPreviewResponse;
-//import com.example.linkpreview.model.TwitterPreviewResponse;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @Service
 public class LinkPreviewService {
 
-    private WebDriver driver;
+    private final WebDriver[] drivers = new WebDriver[3];
     private boolean isDriverInitialized = false;
     private final Map<String, AggregatedResponse> cache = new HashMap<>();
-    private long startTimeNano; // Nanosecond timer
+    private long startTimeNano;
 
     public AggregatedResponse getLinkPreview(String url) {
-       //
         startTimeNano = System.nanoTime();
         List<String> additionalInfo = new ArrayList<>();
         if (!isDriverInitialized) {
-        long driverInitStartTime = System.nanoTime();
-            initializeWebDriver();
+            long driverInitStartTime = System.nanoTime();
+            initializeWebDrivers();
             isDriverInitialized = true;
             long driverInitEndTime = System.nanoTime();
             double driverInitTimeSeconds = (driverInitEndTime - driverInitStartTime) / 1_000_000_000.0;
-            String info = "Driver Intialization time - " + driverInitTimeSeconds + " seconds";
+            String info = "Driver Initialization time - " + driverInitTimeSeconds + " seconds";
             additionalInfo.add(info);
-
         }
 
         try {
-           
-            TwitterPreviewResponse twitterResponse = TwitterPreview.fetch(url, driver, startTimeNano, additionalInfo);
-            LinkPreviewResponse facebookResponse = FacebookPreview.fetch(url, driver, startTimeNano, additionalInfo);
-            LinkPreviewResponse linkedinResponse = LinkedInPreview.fetch(url, driver, startTimeNano, additionalInfo);
+            if (cache.containsKey(url)) {
+                System.out.println("Found Cached preview for URL: " + url);
+                return cache.get(url);
+            }
 
-          
+            CompletableFuture<TwitterPreviewResponse> twitterFuture = CompletableFuture.supplyAsync(() -> TwitterPreview.fetch(url, drivers[0], startTimeNano, additionalInfo));
+            CompletableFuture<LinkPreviewResponse> facebookFuture = CompletableFuture.supplyAsync(() -> FacebookPreview.fetch(url, drivers[1], startTimeNano, additionalInfo));
+            CompletableFuture<LinkPreviewResponse> linkedinFuture = CompletableFuture.supplyAsync(() -> LinkedInPreview.fetch(url, drivers[2], startTimeNano, additionalInfo));
+
+            CompletableFuture<Void> allFutures = CompletableFuture.allOf(twitterFuture, facebookFuture, linkedinFuture);
+
+            allFutures.join(); 
+
+            TwitterPreviewResponse twitterResponse = twitterFuture.get();
+            LinkPreviewResponse facebookResponse = facebookFuture.get();
+            LinkPreviewResponse linkedinResponse = linkedinFuture.get();
+
             System.out.println("Additional Info:");
             for (String info : additionalInfo) {
                 System.out.println(info);
             }
 
-           
             AggregatedResponse aggregatedResponse = new AggregatedResponse(twitterResponse, facebookResponse, linkedinResponse);
 
-           
             long elapsedTimeNano = System.nanoTime() - startTimeNano;
-
-            
             double elapsedTimeSeconds = (double) elapsedTimeNano / 1_000_000_000.0;
             System.out.println("Elapsed time (seconds): " + elapsedTimeSeconds);
 
-           
             cache.put(url, aggregatedResponse);
 
             return aggregatedResponse;
-        } catch (Exception e) {
+        } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException("Failed to fetch link preview", e);
         }
     }
 
-    private void initializeWebDriver() {
+    private void initializeWebDrivers() {
         ChromeOptions options = new ChromeOptions();
 
         options.addArguments("--headless=new");
@@ -81,16 +82,17 @@ public class LinkPreviewService {
         options.addArguments("--lang=en-US");
         options.addArguments("--disable-blink-features=AutomationControlled");
         options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
-//        options.addArguments("user-agent=ozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36");
         options.setExperimentalOption("excludeSwitches", new String[]{"enable-automation"});
         options.setExperimentalOption("useAutomationExtension", false);
-
         options.addArguments("--disable-extensions");
         options.addArguments("--disable-notifications");
 
-        driver = new ChromeDriver(options);
-        Options driverOptions = driver.manage();
-        driverOptions.deleteAllCookies();
+        for (int i = 0; i < 3; i++) {
+            drivers[i] = new ChromeDriver(options);
+            Options driverOptions = drivers[i].manage();
+            driverOptions.deleteAllCookies();
+        }
     }
 }
+
 

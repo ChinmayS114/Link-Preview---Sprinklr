@@ -8,7 +8,6 @@ public class PreviewPrinter {
         try {
             URL url = new URL(urlString);
             String domain = url.getHost();
-//            System.out.println("Preview for " + Channel + " :");
             System.out.println("Domain: " + domain);
             System.out.println("Title: " + (title != null ? title : "Not available"));
             System.out.println("Description: " + (description != null ? description : "Not available"));
